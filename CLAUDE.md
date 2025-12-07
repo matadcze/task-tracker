@@ -91,12 +91,14 @@ make help                 # Show all available commands
 
 - **Authentication**: JWT (15min access + 7day refresh tokens), bcrypt password hashing, token revocation support
 - **Task Management**: Full CRUD with search, filters, sorting, pagination, many-to-many tags
+- **Task Reminders**: Background task reminders via Celery Beat (configurable check interval), idempotent reminder logging
 - **File Attachments**: Upload/download/delete with drag-drop UI (10MB limit, local storage)
 - **Audit Logging**: Immutable audit trail with JSONB details, survives entity deletion via SET NULL FK
 - **Type Safety**: Pydantic schemas (backend) ↔ TypeScript interfaces (frontend) - manual sync required
-- **Monitoring**: Prometheus metrics + Grafana dashboards (auth, tasks, attachments, performance)
+- **Monitoring**: Prometheus metrics + Grafana dashboards (auth, tasks, attachments, reminders, performance)
 - **Rate Limiting**: Redis-based sliding window (100 req/min per IP), fails open if Redis unavailable
 - **Database**: SQLAlchemy 2.0 async, PostgreSQL 16, Alembic migrations (auto-run on startup)
+- **Background Jobs**: Celery + Celery Beat for scheduled reminder processing
 
 ## Service Layer & Domain-Driven Design
 
@@ -105,6 +107,8 @@ Business logic is encapsulated in service classes located in `src/domain/service
 - **TaskService** - Task CRUD, status transitions, filtering, pagination
 - **AuthService** - Registration, login, token refresh, password changes
 - **AttachmentService** - File upload/download, validation, cleanup
+- **TagService** - Tag normalization, deduplication, creation/retrieval
+- **ReminderService** - Due-soon reminder generation (background task, idempotent)
 
 Services are injected into route handlers via `infrastructure/dependencies.py` and instantiated by FastAPI's `Depends()`. Services receive repository and utility dependencies via constructor injection.
 
@@ -147,6 +151,34 @@ Domain entities (User, Task, Attachment) have behavior methods encapsulating bus
 - `is_for_task(task_id)` - Validate task relationship
 - `is_image()` / `is_document()` - File type checking
 - `size_in_mb()` - Size formatting for display
+
+### Worker Layer & Background Jobs
+
+Scheduled background tasks run via **Celery** with **Celery Beat** for job scheduling:
+
+**Worker Architecture** (`src/worker/`):
+- `celery_app.py` - Celery instance configuration (broker + result backend default to Redis)
+- `tasks.py` - Celery task definitions (e.g., `send_due_soon_reminders`)
+
+**Reminder Task Pattern**:
+```python
+@celery_app.task(name="reminders.send_due_soon")
+def send_due_soon_reminders() -> int:
+    """Celery task wrapper around ReminderService."""
+    async with AsyncSessionLocal() as session:
+        service = ReminderService(...)
+        processed = await service.send_due_soon_reminders(window_hours=24)
+        return processed
+```
+
+**Beat Schedule**: Defined in `tasks.py` `celery_app.conf.beat_schedule`:
+- Tasks reference `settings.reminder_check_interval_minutes` for interval control
+- Cron expressions via `celery.schedules.crontab()`
+
+**Running Worker Processes**:
+- Worker: `uv run celery -A src.worker.celery_app worker --loglevel=info` (processes enqueued tasks)
+- Beat: `uv run celery -A src.worker.celery_app beat --loglevel=info` (scheduler, enqueues periodic tasks)
+- Both run automatically in Docker via `docker-compose up`
 
 ## Common Modifications
 
@@ -222,6 +254,19 @@ Migrations auto-run on container startup via `entrypoint.sh`.
 - Histograms: `operation_duration_seconds`
 - Gauges: `operation_count` (no suffix)
 
+### Add a Background Job (Celery Task)
+
+1. **Create domain logic**: Add method to appropriate service (ReminderService, etc.) in `src/domain/services/`
+2. **Define Celery task**: In `backend/src/worker/tasks.py`
+   - Create async helper function that instantiates service with dependencies
+   - Wrap with `@celery_app.task(name="domain.action")` decorator
+   - Use `asyncio.run()` to execute async service methods
+3. **Schedule task** (if periodic): Add to `celery_app.conf.beat_schedule` in `tasks.py`
+   - Use `crontab()` for cron-style scheduling
+   - Reference `settings.*` for configurable intervals
+4. **Test locally**: `uv run celery -A src.worker.celery_app worker` + `uv run celery -A src.worker.celery_app beat` (separate terminals)
+5. **Monitor**: Check worker logs; Celery task results go to Redis (default backend)
+
 ## Testing
 
 **Test Files**:
@@ -250,11 +295,14 @@ Run with `-v` for verbose output. Settings ignores extra `.env` variables, so te
 - Singleton pattern: `from src.core.config import settings`
 - **Important vars**:
   - `DATABASE_URL` - PostgreSQL connection string (async driver: `postgresql+asyncpg://`)
-  - `REDIS_URL` - Redis connection for rate limiting/caching
+  - `REDIS_URL` - Redis connection for rate limiting, caching, and Celery broker/backend
   - `JWT_SECRET_KEY` - HMAC signing key for tokens
   - `ACCESS_TOKEN_EXPIRE_MINUTES` - Default 15
   - `REFRESH_TOKEN_EXPIRE_DAYS` - Default 7
   - `MAX_UPLOAD_SIZE_MB` - File upload limit, default 10
+  - `CELERY_BROKER_URL` - Celery message broker (defaults to `REDIS_URL` if not set)
+  - `CELERY_RESULT_BACKEND` - Celery result backend (defaults to `REDIS_URL` if not set)
+  - `REMINDER_CHECK_INTERVAL_MINUTES` - Periodic reminder check interval, default 10
 
 **Frontend** (`frontend/src/config/constants.ts`):
 - `NEXT_PUBLIC_API_URL` - Backend base URL, defaults to `http://localhost:8000`
@@ -263,8 +311,11 @@ Run with `-v` for verbose output. Settings ignores extra `.env` variables, so te
 **Docker Services**:
 - Backend: `http://localhost:8000` (health: `/health`, metrics: `/metrics`)
 - Frontend: `http://localhost:3000`
+- Celery Worker: Processes background tasks (no HTTP endpoint)
+- Celery Beat: Schedules periodic tasks (no HTTP endpoint)
 - Prometheus: `http://localhost:9091` (from host), `http://prometheus:9090` (internal)
 - Grafana: `http://localhost:3001` (admin/admin)
+- Redis: Broker/backend for Celery and rate limiting cache (no HTTP endpoint)
 
 ## Important Patterns & Gotchas
 
@@ -314,6 +365,21 @@ Alembic migrations in `backend/alembic/versions/` auto-run on container startup 
 - Redis unavailable or connection failed
 - Rate limiting fails open (allows requests) if Redis down
 - Check Redis container: `docker logs tasktracker-redis`
+
+**Celery tasks not executing**:
+- Verify Redis is running and accessible: `redis-cli ping` should return `PONG`
+- Check `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` settings (default to `REDIS_URL`)
+- Inspect worker logs: `docker logs tasktracker-celery-worker`
+- Inspect beat schedule logs: `docker logs tasktracker-celery-beat`
+- For local testing, run worker + beat in separate terminals:
+  - `cd backend && uv run celery -A src.worker.celery_app worker --loglevel=debug`
+  - `cd backend && uv run celery -A src.worker.celery_app beat --loglevel=debug`
+
+**Reminders not being sent**:
+- Check `REMINDER_CHECK_INTERVAL_MINUTES` in settings (default 10)
+- Verify Celery Beat is running and scheduled `due-soon-reminders` task
+- Check logs for `reminders.sent` JSON output
+- Manually test: `uv run celery -A src.worker.celery_app call reminders.send_due_soon`
 
 **Database migration conflicts**:
 - Multiple branches created migrations

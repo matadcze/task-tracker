@@ -59,3 +59,14 @@ class UserRepositoryImpl(UserRepository):
         await self.session.flush()
         await self.session.refresh(db_user)
         return User.model_validate(db_user)
+
+    async def delete(self, user_id: UUID) -> None:
+
+        result = await self.session.execute(select(UserModel).where(UserModel.id == user_id))
+        db_user = result.scalar_one_or_none()
+
+        if db_user is None:
+            return
+
+        await self.session.delete(db_user)
+        await self.session.flush()

@@ -196,6 +196,8 @@ class ApiClient {
       this.put<UserResponse>("/api/v1/auth/profile", data),
 
     me: (): Promise<UserResponse> => this.get<UserResponse>("/api/v1/auth/me"),
+
+    deleteAccount: (): Promise<void> => this.delete<void>("/api/v1/auth/me"),
   };
 
   readonly tasks = {

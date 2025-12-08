@@ -166,6 +166,7 @@ def mock_user_repository():
     repo.get_by_id = AsyncMock()
     repo.get_by_email = AsyncMock()
     repo.update = AsyncMock()
+    repo.delete = AsyncMock()
     return repo
 
 

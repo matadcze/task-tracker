@@ -531,3 +531,51 @@ class TestAuthServiceChangePassword:
         )
 
         mock_refresh_token_repository.revoke_by_user_id.assert_called_once_with(sample_user.id)
+
+
+@pytest.mark.asyncio
+class TestAuthServiceDeleteAccount:
+    """Tests for AuthService.delete_account()"""
+
+    async def test_delete_account_success(
+        self,
+        mock_user_repository,
+        mock_refresh_token_repository,
+        mock_metrics_provider,
+        sample_user,
+    ):
+        service = AuthService(
+            user_repo=mock_user_repository,
+            refresh_token_repo=mock_refresh_token_repository,
+            metrics=mock_metrics_provider,
+            jwt_provider=JWTProvider,
+            password_utils=PasswordUtils,
+            settings=MagicMock(),
+        )
+
+        mock_user_repository.get_by_id.return_value = sample_user
+
+        await service.delete_account(user_id=sample_user.id)
+
+        mock_refresh_token_repository.revoke_by_user_id.assert_awaited_once_with(sample_user.id)
+        mock_user_repository.delete.assert_awaited_once_with(sample_user.id)
+        args, kwargs = mock_metrics_provider.track_auth_operation.call_args
+        assert args[0] == "delete_account"
+        assert args[1] == "success"
+
+    async def test_delete_account_user_not_found(
+        self, mock_user_repository, mock_refresh_token_repository, mock_metrics_provider
+    ):
+        service = AuthService(
+            user_repo=mock_user_repository,
+            refresh_token_repo=mock_refresh_token_repository,
+            metrics=mock_metrics_provider,
+            jwt_provider=JWTProvider,
+            password_utils=PasswordUtils,
+            settings=MagicMock(),
+        )
+
+        mock_user_repository.get_by_id.return_value = None
+
+        with pytest.raises(ValidationError, match="User not found"):
+            await service.delete_account(user_id=uuid4())

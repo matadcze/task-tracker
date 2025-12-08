@@ -275,3 +275,25 @@ class AuthService:
             duration = time.time() - start_time
             self.metrics.track_auth_operation("update_profile", "error", duration=duration)
             raise
+
+    async def delete_account(self, user_id: UUID) -> None:
+        start_time = time.time()
+
+        try:
+            user = await self.user_repo.get_by_id(user_id)
+            if not user:
+                raise ValidationError("User not found")
+
+            await self.refresh_token_repo.revoke_by_user_id(user_id)
+            await self.user_repo.delete(user_id)
+
+            duration = time.time() - start_time
+            self.metrics.track_auth_operation("delete_account", "success", duration=duration)
+        except ValidationError:
+            duration = time.time() - start_time
+            self.metrics.track_auth_operation("delete_account", "error", duration=duration)
+            raise
+        except Exception:
+            duration = time.time() - start_time
+            self.metrics.track_auth_operation("delete_account", "error", duration=duration)
+            raise

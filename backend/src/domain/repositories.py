@@ -32,6 +32,10 @@ class UserRepository(ABC):
     async def update(self, user: User) -> User:
         pass
 
+    @abstractmethod
+    async def delete(self, user_id: UUID) -> None:
+        pass
+
 
 class TaskRepository(ABC):
     @abstractmethod

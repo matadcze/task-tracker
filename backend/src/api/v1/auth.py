@@ -179,3 +179,17 @@ async def update_profile(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user=Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    current_user_id: UUID = Depends(get_current_user_id),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    try:
+        await auth_service.delete_account(user_id=current_user_id)
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )

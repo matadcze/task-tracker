@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 type AlertState = { type: "success" | "error"; message: string } | null;
 
 export default function ProfilePage() {
-  const { user, loading, logout, updateProfile, refreshUser } = useAuth();
+  const { user, loading, logout, updateProfile, refreshUser, deleteAccount } = useAuth();
   const router = useRouter();
 
   const [fullName, setFullName] = useState("");
@@ -18,6 +18,8 @@ export default function ProfilePage() {
   const [passwordStatus, setPasswordStatus] = useState<AlertState>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<AlertState>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -105,6 +107,28 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeleteStatus(null);
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your account? This will remove your tasks and cannot be undone."
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeleteLoading(true);
+      await deleteAccount();
+      setDeleteStatus({ type: "success", message: "Account deleted. Redirecting..." });
+      router.push("/login");
+    } catch (error) {
+      setDeleteStatus({
+        type: "error",
+        message: getFriendlyErrorMessage(error, "Failed to delete account. Please try again."),
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -182,11 +206,10 @@ export default function ProfilePage() {
               <form onSubmit={handleProfileSubmit} className="mt-6 space-y-4">
                 {profileStatus && (
                   <div
-                    className={`rounded-md p-4 text-sm ${
-                      profileStatus.type === "success"
+                    className={`rounded-md p-4 text-sm ${profileStatus.type === "success"
                         ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
                         : "bg-red-50 text-red-800 border border-red-100"
-                    }`}
+                      }`}
                   >
                     {profileStatus.message}
                   </div>
@@ -217,6 +240,8 @@ export default function ProfilePage() {
               </form>
             </div>
 
+
+
             <div className="bg-white shadow rounded-xl p-6 border border-indigo-50">
               <div className="flex items-center justify-between">
                 <div>
@@ -231,11 +256,10 @@ export default function ProfilePage() {
               <form onSubmit={handlePasswordSubmit} className="mt-6 space-y-4">
                 {passwordStatus && (
                   <div
-                    className={`rounded-md p-4 text-sm ${
-                      passwordStatus.type === "success"
+                    className={`rounded-md p-4 text-sm ${passwordStatus.type === "success"
                         ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
                         : "bg-red-50 text-red-800 border border-red-100"
-                    }`}
+                      }`}
                   >
                     {passwordStatus.message}
                   </div>
@@ -276,6 +300,7 @@ export default function ProfilePage() {
                   </label>
                 </div>
 
+
                 <div className="flex justify-end">
                   <button
                     type="submit"
@@ -284,6 +309,42 @@ export default function ProfilePage() {
                   >
                     {passwordLoading ? "Updating..." : "Update password"}
                   </button>
+                </div>
+
+                <div className="bg-white shadow rounded-xl p-6 border border-red-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.3em] text-red-500 font-semibold">Danger</p>
+                      <h2 className="text-2xl font-ultra-bold text-gray-900 tracking-tight">Delete account</h2>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Permanently remove your account and tasks. This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+
+                  {deleteStatus && (
+                    <div
+                      className={`mt-4 rounded-md p-4 text-sm ${deleteStatus.type === "success"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
+                          : "bg-red-50 text-red-800 border border-red-100"
+                        }`}
+                    >
+                      {deleteStatus.message}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex items-center justify-between">
+                    <p className="text-sm text-gray-700">
+                      This will sign you out and permanently delete your data.
+                    </p>
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deleteLoading}
+                      className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-70"
+                    >
+                      {deleteLoading ? "Deleting..." : "Delete account"}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>

@@ -206,6 +206,17 @@ class TaskRepositoryImpl(TaskRepository):
             await self.session.delete(db_task)
             await self.session.flush()
 
+    async def delete_by_owner(self, owner_id: UUID) -> None:
+
+        result = await self.session.execute(select(TaskModel).where(TaskModel.owner_id == owner_id))
+        db_tasks = result.scalars().all()
+
+        for db_task in db_tasks:
+            await self.session.delete(db_task)
+
+        if db_tasks:
+            await self.session.flush()
+
     @staticmethod
     def _to_entity(db_task: TaskModel) -> Task:
 

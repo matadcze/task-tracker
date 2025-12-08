@@ -13,6 +13,7 @@ interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<void>;
   updateProfile: (fullName: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,6 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updatedUser);
   };
 
+  const deleteAccount = async () => {
+    await apiClient.auth.deleteAccount();
+    logout();
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -88,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     refreshUser,
     updateProfile,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

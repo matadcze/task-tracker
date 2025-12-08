@@ -100,14 +100,14 @@ def get_task_service(
 
 def get_task_interpreter():
 
-    if not settings.openai_api_key:
-        return None
+    if settings.openai_api_key:
+        return OpenAIChatTaskInterpreter(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+            timeout_seconds=settings.openai_timeout_seconds,
+        )
 
-    return OpenAIChatTaskInterpreter(
-        api_key=settings.openai_api_key,
-        model=settings.openai_model,
-        timeout_seconds=settings.openai_timeout_seconds,
-    )
+    return None
 
 
 def get_safety_checker():
@@ -128,7 +128,9 @@ def get_chat_service(
     safety_checker=Depends(get_safety_checker),
 ) -> ChatService:
 
-    return ChatService(task_service=task_service, interpreter=interpreter, safety_checker=safety_checker)
+    return ChatService(
+        task_service=task_service, interpreter=interpreter, safety_checker=safety_checker
+    )
 
 
 def get_attachment_service(

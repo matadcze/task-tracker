@@ -1,10 +1,14 @@
-import re
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Optional
 from uuid import UUID
 
 from src.domain.entities import Task
 from src.domain.exceptions import ValidationError
+from src.domain.services.chat_interpreter import (
+    TaskInterpreter,
+    TaskInterpretation,
+    RegexTaskInterpreter,
+)
 from src.domain.services.task_service import TaskService
 
 
@@ -15,25 +19,14 @@ class ChatMessageResult:
 
 
 @dataclass
-class TaskInterpretation:
-    title: str
-    description: Optional[str] = None
-
-
-class TaskInterpreter(Protocol):
-    async def interpret(self, message: str) -> Optional[TaskInterpretation]:
-        ...
-
-
-@dataclass
 class SafetyCheckResult:
     flagged: bool
     reason: Optional[str] = None
 
 
-class SafetyChecker(Protocol):
+class SafetyChecker:
     async def check(self, message: str) -> SafetyCheckResult:
-        ...
+        raise NotImplementedError
 
 
 class ChatService:
@@ -42,72 +35,44 @@ class ChatService:
         task_service: TaskService,
         interpreter: Optional[TaskInterpreter] = None,
         safety_checker: Optional[SafetyChecker] = None,
+        fallback_interpreter: Optional[TaskInterpreter] = None,
     ):
         self.task_service = task_service
         self.interpreter = interpreter
         self.safety_checker = safety_checker
+        self.fallback_interpreter = fallback_interpreter or RegexTaskInterpreter()
 
-    async def _extract_task(self, message: str) -> TaskInterpretation:
+    async def _run_safety(self, message: str) -> None:
         if not message or not message.strip():
             raise ValidationError("Message cannot be empty")
 
-        normalized = " ".join(message.strip().split())
-
-        if self.interpreter:
-            try:
-                interpreted = await self.interpreter.interpret(normalized)
-                if interpreted and interpreted.title:
-                    cleaned_title = self._clean_title(interpreted.title)
-                    if cleaned_title:
-                        description = interpreted.description or None
-                        return TaskInterpretation(
-                            title=cleaned_title,
-                            description=description.strip() if description else None,
-                        )
-            except Exception:
-                pass
-
-        title = None
-        patterns = [
-            r"add\s+(?:a\s+)?task\s+(?:to\s+)?(?P<title>.+)",
-            r"create\s+(?:a\s+)?task\s+(?:to\s+)?(?P<title>.+)",
-            r"new\s+task[:\-]?\s+(?P<title>.+)",
-            r"task[:\-]\s*(?P<title>.+)",
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, normalized, flags=re.IGNORECASE)
-            if match:
-                title = match.group("title")
-                break
-
-        if title is None:
-            title = normalized
-
-        title = self._clean_title(title)
-
-        if not title:
-            raise ValidationError("Could not determine a task title from the message")
-
-        description = normalized if normalized != title else None
-
-        return TaskInterpretation(title=title, description=description)
-
-    @staticmethod
-    def _clean_title(title: str) -> str:
-        cleaned = title.strip().strip('"\'.').rstrip(".! ")
-        if cleaned.lower().startswith("to "):
-            cleaned = cleaned[3:].lstrip()
-        return cleaned
-
-    async def create_task_from_message(self, user_id: UUID, message: str) -> ChatMessageResult:
         if self.safety_checker:
             safety = await self.safety_checker.check(message)
             if safety.flagged:
                 reason = safety.reason or "Message failed safety checks"
                 raise ValidationError(reason)
 
-        interpretation = await self._extract_task(message)
+    async def _interpret(self, message: str) -> TaskInterpretation:
+        normalized = " ".join(message.strip().split())
+
+        if self.interpreter:
+            try:
+                interpreted = await self.interpreter.interpret(normalized)
+                if interpreted and interpreted.title:
+                    return interpreted
+            except Exception:
+                pass
+
+        fallback = await self.fallback_interpreter.interpret(normalized)
+        if fallback and fallback.title:
+            return fallback
+
+        raise ValidationError("Could not determine a task title from the message")
+
+    async def create_task_from_message(self, user_id: UUID, message: str) -> ChatMessageResult:
+        await self._run_safety(message)
+        interpretation = await self._interpret(message)
+
         task = await self.task_service.create_task(
             owner_id=user_id,
             title=interpretation.title,

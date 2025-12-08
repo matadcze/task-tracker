@@ -27,9 +27,7 @@ class ReminderLogRepositoryImpl(ReminderLogRepository):
         self.session.add(db_reminder)
         await self.session.flush()
         await self.session.refresh(db_reminder)
-        reminders_processed_total.labels(
-            type=reminder.reminder_type.value, status="success"
-        ).inc()
+        reminders_processed_total.labels(type=reminder.reminder_type.value, status="success").inc()
         return ReminderLog.model_validate(db_reminder)
 
     async def get_by_task_and_type(

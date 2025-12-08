@@ -1,6 +1,5 @@
 """Tests for Celery app configuration"""
 
-import pytest
 from src.worker.celery_app import celery_app
 from src.core.config import settings
 

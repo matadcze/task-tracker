@@ -4,22 +4,19 @@ from typing import Optional
 
 from openai import AsyncOpenAI, BadRequestError, OpenAIError
 
-from src.domain.services.chat_service import TaskInterpretation
+from src.domain.services.chat_interpreter import TaskInterpretation
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAIChatTaskInterpreter:
-    """Extracts a task title and description from a freeform message using OpenAI."""
-
     def __init__(self, api_key: str, model: str, timeout_seconds: int = 8):
         self.client = AsyncOpenAI(api_key=api_key)
         self.model = model
         self.timeout_seconds = timeout_seconds
 
     def _prompt(self) -> str:
-        return (
-"""
+        return """
 You are a task extraction helper. When given a user's short message, analyze it carefully to determine the main action or objective. Provide your answer as a JSON object with two fields: a concise task "title" and a longer "description" that explains the objective in a clear sentence or two.
 
 Please ensure:
@@ -64,7 +61,6 @@ Example 4
 IMPORTANT REMINDER:  
 You must ONLY output the JSON object with "title" and "description" as specified above—nothing more.
 """
-        )
 
     async def _complete(self, message: str, use_response_format: bool = True):
         kwargs = {

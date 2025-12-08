@@ -1,6 +1,5 @@
 """Tests for password utilities"""
 
-
 from src.infrastructure.auth.password import PasswordUtils, hash_password, verify_password
 
 

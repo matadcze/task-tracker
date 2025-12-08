@@ -3,7 +3,8 @@ from unittest.mock import AsyncMock
 
 from src.domain.entities import Task
 from src.domain.exceptions import ValidationError
-from src.domain.services.chat_service import ChatService, TaskInterpreter, TaskInterpretation, SafetyChecker, SafetyCheckResult
+from src.domain.services.chat_service import ChatService, SafetyChecker, SafetyCheckResult
+from src.domain.services.chat_interpreter import TaskInterpreter, TaskInterpretation
 
 
 class StubInterpreter(TaskInterpreter):

@@ -15,9 +15,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.perf_counter()
         correlation_id = (
-            request.headers.get("X-Correlation-ID")
-            or get_correlation_id()
-            or str(uuid.uuid4())
+            request.headers.get("X-Correlation-ID") or get_correlation_id() or str(uuid.uuid4())
         )
 
         set_correlation_id(correlation_id)

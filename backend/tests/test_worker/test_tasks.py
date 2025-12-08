@@ -1,7 +1,6 @@
 """Tests for Celery worker tasks"""
 
 import pytest
-import asyncio
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -46,9 +45,15 @@ class TestRunRemindersAsync:
             mock_session_factory.return_value = mock_session
 
             with patch("src.worker.tasks.TaskRepositoryImpl") as mock_task_repo_class:
-                with patch("src.worker.tasks.ReminderLogRepositoryImpl") as mock_reminder_repo_class:
-                    with patch("src.worker.tasks.AuditEventRepositoryImpl") as mock_audit_repo_class:
-                        with patch("src.worker.tasks.PrometheusMetricsProvider") as mock_metrics_class:
+                with patch(
+                    "src.worker.tasks.ReminderLogRepositoryImpl"
+                ) as mock_reminder_repo_class:
+                    with patch(
+                        "src.worker.tasks.AuditEventRepositoryImpl"
+                    ) as mock_audit_repo_class:
+                        with patch(
+                            "src.worker.tasks.PrometheusMetricsProvider"
+                        ) as mock_metrics_class:
                             with patch("src.worker.tasks.ReminderService") as mock_service_class:
                                 mock_task_repo_class.return_value = mock_task_repo
                                 mock_reminder_repo_class.return_value = mock_reminder_repo
@@ -62,7 +67,9 @@ class TestRunRemindersAsync:
                                 result = await _run_reminders(window_hours=24)
 
                                 assert result == 1
-                                mock_service.send_due_soon_reminders.assert_called_once_with(window_hours=24)
+                                mock_service.send_due_soon_reminders.assert_called_once_with(
+                                    window_hours=24
+                                )
                                 mock_session.commit.assert_called_once()
 
     async def test_run_reminders_no_tasks(self):
@@ -81,9 +88,15 @@ class TestRunRemindersAsync:
             mock_session_factory.return_value = mock_session
 
             with patch("src.worker.tasks.TaskRepositoryImpl") as mock_task_repo_class:
-                with patch("src.worker.tasks.ReminderLogRepositoryImpl") as mock_reminder_repo_class:
-                    with patch("src.worker.tasks.AuditEventRepositoryImpl") as mock_audit_repo_class:
-                        with patch("src.worker.tasks.PrometheusMetricsProvider") as mock_metrics_class:
+                with patch(
+                    "src.worker.tasks.ReminderLogRepositoryImpl"
+                ) as mock_reminder_repo_class:
+                    with patch(
+                        "src.worker.tasks.AuditEventRepositoryImpl"
+                    ) as mock_audit_repo_class:
+                        with patch(
+                            "src.worker.tasks.PrometheusMetricsProvider"
+                        ) as mock_metrics_class:
                             with patch("src.worker.tasks.ReminderService") as mock_service_class:
                                 mock_task_repo_class.return_value = mock_task_repo
                                 mock_reminder_repo_class.return_value = mock_reminder_repo
@@ -112,9 +125,15 @@ class TestRunRemindersAsync:
             mock_session_factory.return_value = mock_session
 
             with patch("src.worker.tasks.TaskRepositoryImpl") as mock_task_repo_class:
-                with patch("src.worker.tasks.ReminderLogRepositoryImpl") as mock_reminder_repo_class:
-                    with patch("src.worker.tasks.AuditEventRepositoryImpl") as mock_audit_repo_class:
-                        with patch("src.worker.tasks.PrometheusMetricsProvider") as mock_metrics_class:
+                with patch(
+                    "src.worker.tasks.ReminderLogRepositoryImpl"
+                ) as mock_reminder_repo_class:
+                    with patch(
+                        "src.worker.tasks.AuditEventRepositoryImpl"
+                    ) as mock_audit_repo_class:
+                        with patch(
+                            "src.worker.tasks.PrometheusMetricsProvider"
+                        ) as mock_metrics_class:
                             with patch("src.worker.tasks.ReminderService") as mock_service_class:
                                 mock_task_repo_class.return_value = mock_task_repo
                                 mock_reminder_repo_class.return_value = mock_reminder_repo
@@ -122,7 +141,9 @@ class TestRunRemindersAsync:
                                 mock_metrics_class.return_value = mock_metrics
 
                                 mock_service = AsyncMock()
-                                mock_service.send_due_soon_reminders.side_effect = Exception("Database error")
+                                mock_service.send_due_soon_reminders.side_effect = Exception(
+                                    "Database error"
+                                )
                                 mock_service_class.return_value = mock_service
 
                                 with pytest.raises(Exception, match="Database error"):
@@ -163,9 +184,15 @@ class TestRunRemindersAsync:
             mock_session_factory.return_value = mock_session
 
             with patch("src.worker.tasks.TaskRepositoryImpl") as mock_task_repo_class:
-                with patch("src.worker.tasks.ReminderLogRepositoryImpl") as mock_reminder_repo_class:
-                    with patch("src.worker.tasks.AuditEventRepositoryImpl") as mock_audit_repo_class:
-                        with patch("src.worker.tasks.PrometheusMetricsProvider") as mock_metrics_class:
+                with patch(
+                    "src.worker.tasks.ReminderLogRepositoryImpl"
+                ) as mock_reminder_repo_class:
+                    with patch(
+                        "src.worker.tasks.AuditEventRepositoryImpl"
+                    ) as mock_audit_repo_class:
+                        with patch(
+                            "src.worker.tasks.PrometheusMetricsProvider"
+                        ) as mock_metrics_class:
                             with patch("src.worker.tasks.ReminderService") as mock_service_class:
                                 mock_task_repo_class.return_value = mock_task_repo
                                 mock_reminder_repo_class.return_value = mock_reminder_repo
@@ -194,9 +221,15 @@ class TestRunRemindersAsync:
             mock_session_factory.return_value = mock_session
 
             with patch("src.worker.tasks.TaskRepositoryImpl") as mock_task_repo_class:
-                with patch("src.worker.tasks.ReminderLogRepositoryImpl") as mock_reminder_repo_class:
-                    with patch("src.worker.tasks.AuditEventRepositoryImpl") as mock_audit_repo_class:
-                        with patch("src.worker.tasks.PrometheusMetricsProvider") as mock_metrics_class:
+                with patch(
+                    "src.worker.tasks.ReminderLogRepositoryImpl"
+                ) as mock_reminder_repo_class:
+                    with patch(
+                        "src.worker.tasks.AuditEventRepositoryImpl"
+                    ) as mock_audit_repo_class:
+                        with patch(
+                            "src.worker.tasks.PrometheusMetricsProvider"
+                        ) as mock_metrics_class:
                             with patch("src.worker.tasks.ReminderService") as mock_service_class:
                                 mock_task_repo_class.return_value = mock_task_repo
                                 mock_reminder_repo_class.return_value = mock_reminder_repo
@@ -209,7 +242,9 @@ class TestRunRemindersAsync:
 
                                 await _run_reminders(window_hours=48)
 
-                                mock_service.send_due_soon_reminders.assert_called_once_with(window_hours=48)
+                                mock_service.send_due_soon_reminders.assert_called_once_with(
+                                    window_hours=48
+                                )
 
 
 class TestSendDueSoonRemindersTask:
@@ -233,6 +268,7 @@ class TestSendDueSoonRemindersTask:
 
     def test_task_uses_24_hour_window(self):
         """Test that task uses default 24-hour window"""
+
         async def mock_run_reminders(**kwargs):
             return 3
 

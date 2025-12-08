@@ -156,6 +156,7 @@ def get_auth_service(
     refresh_token_repo=Depends(get_refresh_token_repository),
     metrics: MetricsProvider = Depends(get_metrics_provider),
     rate_limiter: AuthRateLimiter = Depends(get_rate_limiter),
+    task_service: TaskService = Depends(get_task_service),
 ) -> AuthService:
 
     return AuthService(
@@ -166,4 +167,5 @@ def get_auth_service(
         password_utils=PasswordUtils,
         settings=settings,
         rate_limiter=rate_limiter,
+        task_service=task_service,
     )

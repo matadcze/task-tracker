@@ -543,7 +543,9 @@ class TestAuthServiceDeleteAccount:
         mock_refresh_token_repository,
         mock_metrics_provider,
         sample_user,
+        mock_task_repository,
     ):
+        task_service = MagicMock(delete_tasks_for_owner=AsyncMock())
         service = AuthService(
             user_repo=mock_user_repository,
             refresh_token_repo=mock_refresh_token_repository,
@@ -551,6 +553,7 @@ class TestAuthServiceDeleteAccount:
             jwt_provider=JWTProvider,
             password_utils=PasswordUtils,
             settings=MagicMock(),
+            task_service=task_service,
         )
 
         mock_user_repository.get_by_id.return_value = sample_user
@@ -558,6 +561,7 @@ class TestAuthServiceDeleteAccount:
         await service.delete_account(user_id=sample_user.id)
 
         mock_refresh_token_repository.revoke_by_user_id.assert_awaited_once_with(sample_user.id)
+        task_service.delete_tasks_for_owner.assert_awaited_once_with(sample_user.id)
         mock_user_repository.delete.assert_awaited_once_with(sample_user.id)
         args, kwargs = mock_metrics_provider.track_auth_operation.call_args
         assert args[0] == "delete_account"

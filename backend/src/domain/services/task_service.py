@@ -341,3 +341,6 @@ class TaskService:
             duration = time.time() - start_time
             self.metrics.track_task_operation("delete", "error", duration)
             raise
+
+    async def delete_tasks_for_owner(self, owner_id: UUID) -> None:
+        await self.task_repo.delete_by_owner(owner_id)

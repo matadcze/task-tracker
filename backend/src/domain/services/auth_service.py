@@ -9,6 +9,7 @@ from ..entities import RefreshToken, User
 from ..exceptions import AuthenticationError, ValidationError
 from ..repositories import RefreshTokenRepository, UserRepository
 from .metrics_provider import MetricsProvider
+from .task_service import TaskService
 
 
 class AuthTokens(NamedTuple):
@@ -32,6 +33,7 @@ class AuthService:
         password_utils,
         settings,
         rate_limiter=None,
+        task_service: TaskService | None = None,
     ):
         self.user_repo = user_repo
         self.refresh_token_repo = refresh_token_repo
@@ -40,6 +42,7 @@ class AuthService:
         self.password_utils = password_utils
         self.settings = settings
         self.rate_limiter = rate_limiter
+        self.task_service = task_service
 
     async def register(self, email: str, password: str, full_name: str) -> User:
         start_time = time.time()
@@ -285,6 +288,9 @@ class AuthService:
                 raise ValidationError("User not found")
 
             await self.refresh_token_repo.revoke_by_user_id(user_id)
+            if self.task_service:
+                # Delete tasks explicitly before removing user
+                await self.task_service.delete_tasks_for_owner(user_id)
             await self.user_repo.delete(user_id)
 
             duration = time.time() - start_time

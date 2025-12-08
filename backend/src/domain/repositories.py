@@ -80,6 +80,10 @@ class TaskRepository(ABC):
     async def delete(self, task_id: UUID) -> None:
         pass
 
+    @abstractmethod
+    async def delete_by_owner(self, owner_id: UUID) -> None:
+        pass
+
 
 class TagRepository(ABC):
     @abstractmethod

@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 10
     data_dir: Path = Path("./data")
 
+    openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-5.1-chat-latest"
+    openai_moderation_model: str = "omni-moderation-latest"
+    openai_timeout_seconds: int = 8
+
     def model_post_init(self, __context):
         if not self.celery_broker_url:
             object.__setattr__(self, "celery_broker_url", self.redis_url)

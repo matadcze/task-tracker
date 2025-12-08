@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 
 from src.core.time import utc_now
@@ -62,7 +62,9 @@ class ReminderService:
                 self.metrics.track_audit_event(EventType.REMINDER_SENT.value)
                 processed += 1
             except Exception as exc:
-                logger.exception("Failed to record reminder", extra={"task_id": str(task.id), "error": str(exc)})
+                logger.exception(
+                    "Failed to record reminder", extra={"task_id": str(task.id), "error": str(exc)}
+                )
                 continue
 
         return processed

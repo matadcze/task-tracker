@@ -134,6 +134,17 @@ export interface TaskListResponse {
   total: number;
 }
 
+// ===== Chat =====
+
+export interface ChatMessageRequest {
+  message: string;
+}
+
+export interface ChatMessageResponse {
+  reply: string;
+  created_task?: TaskResponse;
+}
+
 export interface AttachmentSummary {
   id: string;
   filename: string;

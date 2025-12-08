@@ -9,7 +9,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.api.middleware import MetricsMiddleware, RateLimitMiddleware, RequestLoggingMiddleware
 from src.api.schemas import ErrorDetail, ErrorResponse
-from src.api.v1 import attachments, audit, auth, health, tasks
+from src.api.v1 import attachments, audit, auth, chat, health, tasks
 from src.core.config import settings
 from src.core.logging import configure_logging, get_correlation_id
 from src.domain.exceptions import (
@@ -131,6 +131,7 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router, prefix="/api/v1")
     app.include_router(attachments.router, prefix="/api/v1")
     app.include_router(audit.router, prefix="/api/v1")
+    app.include_router(chat.router, prefix="/api/v1")
 
     Instrumentator(
         should_group_status_codes=True,

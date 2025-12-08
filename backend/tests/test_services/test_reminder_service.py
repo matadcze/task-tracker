@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from src.domain.services.reminder_service import ReminderService
@@ -58,7 +58,9 @@ class TestReminderServiceSendDueSoonReminders:
         mock_task_repo.list_due_between.assert_called_once()
         mock_reminder_repo.create.assert_called_once()
         mock_audit_repo.create.assert_called_once()
-        mock_metrics_provider.track_audit_event.assert_called_once_with(EventType.REMINDER_SENT.value)
+        mock_metrics_provider.track_audit_event.assert_called_once_with(
+            EventType.REMINDER_SENT.value
+        )
 
     async def test_send_due_soon_reminders_no_tasks(self, mock_metrics_provider):
         """Test when no tasks are due soon"""
@@ -81,7 +83,9 @@ class TestReminderServiceSendDueSoonReminders:
         mock_reminder_repo.create.assert_not_called()
         mock_audit_repo.create.assert_not_called()
 
-    async def test_send_due_soon_reminders_skips_existing(self, sample_user_id, mock_metrics_provider):
+    async def test_send_due_soon_reminders_skips_existing(
+        self, sample_user_id, mock_metrics_provider
+    ):
         """Test that reminders are not sent twice for same task"""
         task = Task(
             id=uuid4(),
@@ -119,7 +123,9 @@ class TestReminderServiceSendDueSoonReminders:
         mock_reminder_repo.create.assert_not_called()
         mock_audit_repo.create.assert_not_called()
 
-    async def test_send_due_soon_reminders_custom_window(self, sample_user_id, mock_metrics_provider):
+    async def test_send_due_soon_reminders_custom_window(
+        self, sample_user_id, mock_metrics_provider
+    ):
         """Test using custom time window"""
         mock_task_repo = AsyncMock()
         mock_reminder_repo = AsyncMock()
@@ -144,7 +150,9 @@ class TestReminderServiceSendDueSoonReminders:
         time_diff = end_time - start_time
         assert time_diff.total_seconds() == 48 * 3600
 
-    async def test_send_due_soon_reminders_multiple_tasks(self, sample_user_id, mock_metrics_provider):
+    async def test_send_due_soon_reminders_multiple_tasks(
+        self, sample_user_id, mock_metrics_provider
+    ):
         """Test sending reminders for multiple tasks"""
         task1 = Task(
             id=uuid4(),
@@ -185,7 +193,9 @@ class TestReminderServiceSendDueSoonReminders:
         assert mock_reminder_repo.create.call_count == 2
         assert mock_audit_repo.create.call_count == 2
 
-    async def test_send_due_soon_reminders_continues_on_error(self, sample_user_id, mock_metrics_provider):
+    async def test_send_due_soon_reminders_continues_on_error(
+        self, sample_user_id, mock_metrics_provider
+    ):
         """Test that processing continues if one reminder fails"""
         task1 = Task(
             id=uuid4(),
@@ -230,7 +240,9 @@ class TestReminderServiceSendDueSoonReminders:
         # Second task's audit event should still be created
         assert mock_audit_repo.create.call_count == 1
 
-    async def test_send_due_soon_reminders_audit_event_details(self, sample_user_id, mock_metrics_provider):
+    async def test_send_due_soon_reminders_audit_event_details(
+        self, sample_user_id, mock_metrics_provider
+    ):
         """Test that audit event includes task due date in details"""
         task = Task(
             id=uuid4(),
@@ -312,7 +324,9 @@ class TestReminderServiceSendDueSoonReminders:
         assert created_reminder.reminder_type == ReminderType.DUE_SOON
         assert created_reminder.task_id == task.id
 
-    async def test_send_due_soon_reminders_tracks_metrics(self, sample_user_id, mock_metrics_provider):
+    async def test_send_due_soon_reminders_tracks_metrics(
+        self, sample_user_id, mock_metrics_provider
+    ):
         """Test that metrics are tracked for each reminder sent"""
         task = Task(
             id=uuid4(),
@@ -341,7 +355,9 @@ class TestReminderServiceSendDueSoonReminders:
 
         await service.send_due_soon_reminders(window_hours=24)
 
-        mock_metrics_provider.track_audit_event.assert_called_once_with(EventType.REMINDER_SENT.value)
+        mock_metrics_provider.track_audit_event.assert_called_once_with(
+            EventType.REMINDER_SENT.value
+        )
 
     async def test_send_due_soon_reminders_empty_window_hours(self, mock_metrics_provider):
         """Test behavior with minimal window (edge case)"""

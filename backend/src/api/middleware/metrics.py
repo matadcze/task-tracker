@@ -27,11 +27,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             method = request.method
             path = request.url.path
 
-            http_requests_total.labels(
-                method=method, path=path, status=str(status_code)
-            ).inc()
+            http_requests_total.labels(method=method, path=path, status=str(status_code)).inc()
             http_request_duration_seconds.labels(method=method, path=path).observe(duration)
             if status_code >= 400:
-                http_errors_total.labels(
-                    method=method, path=path, status=str(status_code)
-                ).inc()
+                http_errors_total.labels(method=method, path=path, status=str(status_code)).inc()

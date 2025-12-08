@@ -4,6 +4,8 @@ import type {
   AttachmentListResponse,
   AttachmentResponse,
   ChangePasswordRequest,
+  ChatMessageRequest,
+  ChatMessageResponse,
   ErrorResponse,
   HealthResponse,
   LoginRequest,
@@ -232,6 +234,11 @@ class ApiClient {
 
     delete: (taskId: string): Promise<void> =>
       this.delete<void>(`/api/v1/tasks/${taskId}`),
+  };
+
+  readonly chat = {
+    sendMessage: (data: ChatMessageRequest): Promise<ChatMessageResponse> =>
+      this.post<ChatMessageResponse>("/api/v1/chat/messages", data),
   };
 
   readonly attachments = {

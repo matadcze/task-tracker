@@ -9,10 +9,12 @@ from src.domain.repositories import (
     TaskRepository,
     UserRepository,
 )
-from src.domain.services import AttachmentService, AuthService, TagService, TaskService
+from src.domain.services import AttachmentService, AuthService, ChatService, TagService, TaskService
 from src.domain.services.metrics_provider import MetricsProvider
 from src.domain.services.storage_provider import StorageProvider
 from src.infrastructure.database.session import get_db
+from src.infrastructure.llm.openai_task_interpreter import OpenAIChatTaskInterpreter
+from src.infrastructure.llm.openai_safety_checker import OpenAISafetyChecker
 from src.infrastructure.metrics import PrometheusMetricsProvider
 from src.infrastructure.repositories import (
     AttachmentRepositoryImpl,
@@ -93,6 +95,41 @@ def get_task_service(
 
     return TaskService(
         task_repo=task_repo, audit_repo=audit_repo, tag_service=tag_service, metrics=metrics
+    )
+
+
+def get_task_interpreter():
+
+    if settings.openai_api_key:
+        return OpenAIChatTaskInterpreter(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+            timeout_seconds=settings.openai_timeout_seconds,
+        )
+
+    return None
+
+
+def get_safety_checker():
+
+    if not settings.openai_api_key:
+        return None
+
+    return OpenAISafetyChecker(
+        api_key=settings.openai_api_key,
+        model=settings.openai_moderation_model,
+        timeout_seconds=settings.openai_timeout_seconds,
+    )
+
+
+def get_chat_service(
+    task_service: TaskService = Depends(get_task_service),
+    interpreter=Depends(get_task_interpreter),
+    safety_checker=Depends(get_safety_checker),
+) -> ChatService:
+
+    return ChatService(
+        task_service=task_service, interpreter=interpreter, safety_checker=safety_checker
     )
 
 

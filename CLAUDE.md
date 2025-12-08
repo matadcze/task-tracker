@@ -99,6 +99,7 @@ make help                 # Show all available commands
 - **Rate Limiting**: Redis-based sliding window (100 req/min per IP), fails open if Redis unavailable
 - **Database**: SQLAlchemy 2.0 async, PostgreSQL 16, Alembic migrations (auto-run on startup)
 - **Background Jobs**: Celery + Celery Beat for scheduled reminder processing
+- **Chat Assistant**: Natural language task creation via OpenAI with content moderation safety checks
 
 ## Service Layer & Domain-Driven Design
 
@@ -109,6 +110,7 @@ Business logic is encapsulated in service classes located in `src/domain/service
 - **AttachmentService** - File upload/download, validation, cleanup
 - **TagService** - Tag normalization, deduplication, creation/retrieval
 - **ReminderService** - Due-soon reminder generation (background task, idempotent)
+- **ChatService** - Natural language task creation with LLM interpretation and safety checking
 
 Services are injected into route handlers via `infrastructure/dependencies.py` and instantiated by FastAPI's `Depends()`. Services receive repository and utility dependencies via constructor injection.
 
@@ -179,6 +181,28 @@ def send_due_soon_reminders() -> int:
 - Worker: `uv run celery -A src.worker.celery_app worker --loglevel=info` (processes enqueued tasks)
 - Beat: `uv run celery -A src.worker.celery_app beat --loglevel=info` (scheduler, enqueues periodic tasks)
 - Both run automatically in Docker via `docker-compose up`
+
+### Chat Assistant Architecture
+
+The chat feature uses a layered interpretation approach with OpenAI integration:
+
+**Components** (`src/domain/services/chat_service.py`, `src/domain/services/chat_interpreter.py`):
+- **ChatService** - Orchestrates safety checking, message interpretation, and task creation
+- **TaskInterpreter** (Protocol) - Interface for extracting task title/description from messages
+- **RegexTaskInterpreter** - Fallback interpreter using regex patterns (no LLM required)
+- **SafetyChecker** - Interface for content moderation
+
+**LLM Implementations** (`src/infrastructure/llm/`):
+- **OpenAIChatTaskInterpreter** - Uses OpenAI chat completion to extract structured task data
+- **OpenAISafetyChecker** - Uses OpenAI moderation API for content filtering
+
+**Flow**:
+1. Safety check runs first (if configured) - rejects flagged content
+2. Primary interpreter (OpenAI) attempts task extraction
+3. Falls back to RegexTaskInterpreter if LLM fails or is unconfigured
+4. Task created via TaskService, response includes created task
+
+**Fail-Safe Design**: Both LLM components fail open - if OpenAI is unavailable or errors occur, the system continues with fallback behavior (regex interpretation, no moderation).
 
 ## Common Modifications
 
@@ -303,6 +327,10 @@ Run with `-v` for verbose output. Settings ignores extra `.env` variables, so te
   - `CELERY_BROKER_URL` - Celery message broker (defaults to `REDIS_URL` if not set)
   - `CELERY_RESULT_BACKEND` - Celery result backend (defaults to `REDIS_URL` if not set)
   - `REMINDER_CHECK_INTERVAL_MINUTES` - Periodic reminder check interval, default 10
+  - `OPENAI_API_KEY` - Optional, enables LLM-based task interpretation and content moderation
+  - `OPENAI_MODEL` - Chat model for task extraction, default `gpt-5.1-chat-latest`
+  - `OPENAI_MODERATION_MODEL` - Moderation model, default `omni-moderation-latest`
+  - `OPENAI_TIMEOUT_SECONDS` - LLM request timeout, default 8
 
 **Frontend** (`frontend/src/config/constants.ts`):
 - `NEXT_PUBLIC_API_URL` - Backend base URL, defaults to `http://localhost:8000`
@@ -390,3 +418,9 @@ Alembic migrations in `backend/alembic/versions/` auto-run on container startup 
 - Check Prometheus datasource URL is `http://prometheus:9090` (internal Docker network)
 - NOT `http://localhost:9091` (host network)
 - Dashboard JSON must be flat (no `"dashboard": {}` wrapper)
+
+**Chat/LLM features not working**:
+- Check `OPENAI_API_KEY` is set - feature is disabled without it
+- System falls back to regex-based task parsing if LLM unavailable
+- Check logs for OpenAI timeout or API errors
+- Content moderation is skipped if safety checker fails (fail-open design)

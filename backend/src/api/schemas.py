@@ -119,6 +119,17 @@ class TaskListResponse(BaseModel):
     total: int
 
 
+class ChatMessageRequest(BaseModel):
+
+    message: str = Field(..., min_length=1, max_length=1000, description="User chat message")
+
+
+class ChatMessageResponse(BaseModel):
+
+    reply: str
+    created_task: Optional[TaskResponse] = None
+
+
 class AttachmentSummary(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)

@@ -20,6 +20,7 @@ import { DeleteConfirmModal } from "@/components/tasks/DeleteConfirmModal";
 import { SearchAndFilters } from "@/components/tasks/SearchAndFilters";
 import { Pagination } from "@/components/common/Pagination";
 import { Modal } from "@/components/common/Modal";
+import { TaskAssistant } from "@/components/assistant/TaskAssistant";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -321,6 +322,11 @@ export default function DashboardPage() {
           </div>
 
           <aside className="space-y-4">
+            <TaskAssistant
+              onTaskCreated={async () => {
+                await fetchTasks();
+              }}
+            />
             <div className="bg-white shadow rounded-xl p-5 border border-indigo-50">
               <p className="text-xs uppercase tracking-[0.3em] text-indigo-500 font-semibold">
                 Snapshot

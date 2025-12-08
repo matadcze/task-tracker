@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 from src.domain.entities import Task
 from src.domain.exceptions import ValidationError
-from src.domain.services.chat_service import ChatService, TaskInterpreter, TaskInterpretation
+from src.domain.services.chat_service import ChatService, TaskInterpreter, TaskInterpretation, SafetyChecker, SafetyCheckResult
 
 
 class StubInterpreter(TaskInterpreter):
@@ -25,6 +25,17 @@ class StubInterpreter(TaskInterpreter):
         if self.title is None:
             return None
         return TaskInterpretation(title=self.title, description=self.description)
+
+
+class StubSafetyChecker(SafetyChecker):
+    def __init__(self, flagged: bool = False, reason: str | None = None):
+        self.flagged = flagged
+        self.reason = reason
+        self.calls = 0
+
+    async def check(self, message: str) -> SafetyCheckResult:
+        self.calls += 1
+        return SafetyCheckResult(flagged=self.flagged, reason=self.reason)
 
 
 @pytest.mark.asyncio
@@ -106,3 +117,16 @@ async def test_falls_back_when_interpreter_errors(sample_user_id):
     task_service.create_task.assert_awaited_once_with(
         owner_id=sample_user_id, title="call John", description="Add a task to call John"
     )
+
+
+@pytest.mark.asyncio
+async def test_blocks_when_safety_checker_flags(sample_user_id):
+    task_service = AsyncMock()
+    safety_checker = StubSafetyChecker(flagged=True, reason="Unsafe content")
+    service = ChatService(task_service=task_service, safety_checker=safety_checker)
+
+    with pytest.raises(ValidationError, match="Unsafe content"):
+        await service.create_task_from_message(sample_user_id, "Do something unsafe")
+
+    assert safety_checker.calls == 1
+    task_service.create_task.assert_not_awaited()

@@ -43,6 +43,7 @@ class Settings(BaseSettings):
 
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-5.1-chat-latest"
+    openai_moderation_model: str = "omni-moderation-latest"
     openai_timeout_seconds: int = 8
 
     def model_post_init(self, __context):

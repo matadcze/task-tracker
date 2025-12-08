@@ -25,14 +25,27 @@ class TaskInterpreter(Protocol):
         ...
 
 
+@dataclass
+class SafetyCheckResult:
+    flagged: bool
+    reason: Optional[str] = None
+
+
+class SafetyChecker(Protocol):
+    async def check(self, message: str) -> SafetyCheckResult:
+        ...
+
+
 class ChatService:
     def __init__(
         self,
         task_service: TaskService,
         interpreter: Optional[TaskInterpreter] = None,
+        safety_checker: Optional[SafetyChecker] = None,
     ):
         self.task_service = task_service
         self.interpreter = interpreter
+        self.safety_checker = safety_checker
 
     async def _extract_task(self, message: str) -> TaskInterpretation:
         if not message or not message.strip():
@@ -88,6 +101,12 @@ class ChatService:
         return cleaned
 
     async def create_task_from_message(self, user_id: UUID, message: str) -> ChatMessageResult:
+        if self.safety_checker:
+            safety = await self.safety_checker.check(message)
+            if safety.flagged:
+                reason = safety.reason or "Message failed safety checks"
+                raise ValidationError(reason)
+
         interpretation = await self._extract_task(message)
         task = await self.task_service.create_task(
             owner_id=user_id,

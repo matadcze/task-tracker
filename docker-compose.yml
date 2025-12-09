@@ -3,10 +3,8 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: tasktracker-postgres
-    environment:
-      - POSTGRES_USER=tasktracker
-      - POSTGRES_PASSWORD=tasktracker
-      - POSTGRES_DB=tasktracker
+    env_file:
+      - ./backend/.env
     ports:
       - "5432:5432"
     volumes:
@@ -41,13 +39,8 @@ services:
     container_name: tasktracker-backend
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://tasktracker:tasktracker@postgres:5432/tasktracker
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
-      - DEBUG=${DEBUG:-false}
+    env_file:
+      - ./backend/.env
     volumes:
       - ./backend/data/uploads:/app/data/uploads
     depends_on:
@@ -69,13 +62,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: tasktracker-celery-worker
+    env_file:
+      - ./backend/.env
     command: uv run celery -A src.worker.celery_app worker --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql://tasktracker:tasktracker@postgres:5432/tasktracker
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,20 +78,15 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: tasktracker-celery-beat
+    env_file:
+      - ./backend/.env
     command: uv run celery -A src.worker.celery_app beat --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql://tasktracker:tasktracker@postgres:5432/tasktracker
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-secret-key-change-in-production}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
-
 
   # Frontend
   frontend:
@@ -112,8 +96,8 @@ services:
     container_name: tasktracker-frontend
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    env_file:
+      - ./backend/.env
     depends_on:
       backend:
         condition: service_healthy
@@ -135,9 +119,9 @@ services:
       - "--web.console.libraries=/etc/prometheus/console_libraries"
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--web.enable-lifecycle"
-    # depends_on:
-    #   backend:
-    #     condition: service_healthy
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   # Grafana Dashboards

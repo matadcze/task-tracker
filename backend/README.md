@@ -40,6 +40,7 @@ npm run dev
 Set `NEXT_PUBLIC_API_URL` if the backend isn’t on the default `http://localhost:8000`.
 
 ### Full stack with Docker
+- Copy `backend/.env.example` to `backend/.env` and fill in secrets (e.g., `OPENAI_API_KEY`, `JWT_SECRET_KEY`). Docker Compose now reads this file so the backend has the same config as local runs.
 ```
 docker compose up -d --build
 ```

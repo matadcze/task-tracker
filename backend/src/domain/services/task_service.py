@@ -270,9 +270,12 @@ class TaskService:
                 normalized_tags = self.tag_service.ensure_tags_exist(tags)
                 if inspect.isawaitable(normalized_tags):
                     normalized_tags = await normalized_tags
-                if normalized_tags != task.tags:
-                    changes["tags"] = {"old": task.tags, "new": normalized_tags}
-                    task.tags = normalized_tags
+                normalized_tag_names = [
+                    tag.name if hasattr(tag, "name") else tag for tag in normalized_tags
+                ]
+                if normalized_tag_names != task.tags:
+                    changes["tags"] = {"old": task.tags, "new": normalized_tag_names}
+                    task.tags = normalized_tag_names
 
             if not changes:
                 return task, {}
